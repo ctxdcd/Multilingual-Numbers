@@ -640,14 +640,11 @@ dialog.about::backdrop {
 }
 
 /* =================================
-   STICKY BOTTOM FOOTER
+   STICKY FOOTER — PAGE LAYOUT
 ================================= */
 
-html,
-body {
-  min-height: 100%;
-}
-
+/* The page is a column at least one screen tall (dvh = the visible
+   mobile viewport; vh is the fallback for older browsers). */
 body {
   min-height: 100vh;
   min-height: 100dvh;
@@ -655,13 +652,24 @@ body {
   flex-direction: column;
 }
 
-main {
-  flex: 1 0 auto;
+/* In a flex column, items with auto side margins shrink to fit their
+   content, so give each one an explicit width. max-width: 860px and
+   margin: 0 auto from the existing rules keep them centred. */
+.top,
+main,
+.site-footer {
   width: 100%;
 }
 
-.site-footer {
-  width: 100%;
-  flex-shrink: 0;
-  margin-top: auto;
+/* main absorbs all spare height and pushes the footer down. */
+main {
+  flex: 1 0 auto;
+}
+
+/* The mobile header has 10px side margins, so subtract them
+   to avoid horizontal overflow. */
+@media (max-width: 480px) {
+  .top {
+    width: calc(100% - 20px);
+  }
 }
