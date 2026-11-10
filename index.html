@@ -10,13 +10,34 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Numbers">
   <link rel="stylesheet" href="css/style.css">
-  <script>
-  try { if (sessionStorage.getItem('numbers-splash')) document.documentElement.classList.add('no-splash'); } catch (e) {}
+  <!-- SPLASH INTRO -->
+<script>
+(function () {
+  try {
+    var root = document.documentElement;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var forced = /[?&]splash(=|&|$)/.test(location.search);
+
+    var installed =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+
+    if (!installed && !forced) return;
+
+    if (!forced && sessionStorage.getItem("numbers-splash")) return;
+
+    sessionStorage.setItem("numbers-splash", "1");
+    root.classList.add("splash-active");
+
+  } catch (e) {}
+})();
 </script>
 </head>
 <body>
 
-  <div id="splash" aria-hidden="true">
+ <div id="splash" aria-hidden="true">
   <img src="icons/icon-192.png" alt="" width="96" height="96">
   <span>Numbers</span>
 </div>
@@ -209,16 +230,31 @@
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
-  (function () {
-    var s = document.getElementById('splash');
-    if (!s) return;
-    var wait = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 1300;
-    setTimeout(function () {
-      s.classList.add('hide');
-      setTimeout(function () { s.remove(); }, 500);
-    }, wait);
-    try { sessionStorage.setItem('numbers-splash', '1'); } catch (e) {}
-  })();
+(function () {
+  var splash = document.getElementById("splash");
+  if (!splash) return;
+
+  var root = document.documentElement;
+
+  if (!root.classList.contains("splash-active")) {
+    splash.remove();
+    return;
+  }
+
+  function finish() {
+    root.classList.remove("splash-active");
+    splash.remove();
+  }
+
+  splash.addEventListener("animationend", function (event) {
+    if (event.target === splash &&
+        event.animationName === "splash-out") {
+      finish();
+    }
+  });
+
+  setTimeout(finish, 2500);
+})();
 </script>
   <script>
     // Offline support (only works on http://localhost or https, not by double-clicking the file)
