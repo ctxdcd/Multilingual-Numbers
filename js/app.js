@@ -9,7 +9,7 @@
   const NEXT_DELAY = 1200; // ms before the next question
 
   // ---------- state ----------
-  const state = { lang: 'ja', script: 'kana', view: 'home', scaleId: null, value: null, session: null };
+  const state = { lang: 'ja', script: 'kana', view: 'home', scaleId: null, value: null, session: null, pending: null };
   try {
     const saved = localStorage.getItem(STORE);
     if (D.languages.some(function (l) { return l.code === saved; })) state.lang = saved;
@@ -46,6 +46,46 @@
       const t = r[i]; r[i] = r[j]; r[j] = t;
     }
     return r;
+  }
+
+  // ---------- typing-mode answer checking ----------
+  // Normalise for comparison only: Unicode NFC, strip invisible direction marks, collapse
+  // whitespace, trim, and lowercase. Accents and diacritics are never removed.
+  // `locale` lets Turkish use its own I/ı and İ/i rules.
+  function normalizeAnswer(str, locale) {
+    let t = String(str).normalize('NFC')
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
+      .replace(/\s+/g, ' ').trim();
+    try { t = t.toLocaleLowerCase(locale); } catch (e) { t = t.toLowerCase(); }
+    return t.normalize('NFC');
+  }
+  // Arabic short-vowel marks and tatweel are optional when typing (e.g. ألفًا vs ألفا)
+  function foldArabic(t) { return t.replace(/[\u0640\u064B-\u065F\u0670]/g, ''); }
+
+  // Everything accepted for a value, taken from the existing data only:
+  //  - the displayed word, and each part of "a / b" alternatives (e.g. なな / しち)
+  //  - "also X" / "also written X" notes in the data's 3rd field (e.g. hundert / einhundert)
+  function acceptedAnswers(L, v, script) {
+    const w = L.words[v], main = textOf(L, v, script);
+    const out = [main];
+    main.split('/').forEach(function (p) { out.push(p); });
+    if (L.code !== 'ja' && w.a) {
+      const m = w.a.match(/^also (?:written )?(.+)$/i);
+      if (m) { out.push(m[1]); m[1].split('/').forEach(function (p) { out.push(p); }); }
+    }
+    return out.map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+  function isCorrectTyped(typed, accepted, code) {
+    // Turkish is checked with Turkish casing and with standard casing, so "YEDI" typed on a
+    // non-Turkish keyboard (plain capital I) still matches, while "sifir" still does not match "sıfır".
+    const locales = code === 'tr' ? ['tr', 'en'] : [code];
+    return locales.some(function (loc) {
+      const t = normalizeAnswer(typed, loc);
+      return accepted.some(function (a) {
+        const n = normalizeAnswer(a, loc);
+        return t === n || (code === 'ar' && foldArabic(t) === foldArabic(n));
+      });
+    });
   }
 
   // ---------- selectors ----------
@@ -99,10 +139,24 @@
       '<p class="note">' + L.note + '</p>';
   }
 
+  // ---------- mode selection ----------
+  function renderModeSelect() {
+    const p = state.pending, L = langOf(state.lang);
+    const title = p.type === 'scale' ? scaleOf(p.scaleId).title : D.label(p.value);
+    app.innerHTML =
+      '<button class="back" data-action="mode-back" aria-label="Back">' + BACK_ICON + '</button>' +
+      '<div class="head"><h2>Choose a mode</h2><span class="muted">' + L.name + ' · ' + title + '</span></div>' +
+      '<div class="grid">' +
+        '<button class="card" data-action="start-mode" data-mode="choice"><span class="scale-title">Multiple Choice</span><span class="muted">Pick the right answer from four options.</span></button>' +
+        '<button class="card" data-action="start-mode" data-mode="typing"><span class="scale-title">Typing Mode</span><span class="muted">Type the written form yourself.</span></button>' +
+      '</div>';
+  }
+
   // ---------- recognition practice ----------
-  function startSession(scope) {
+  function startSession(scope, mode) {
     const s = scope.type === 'scale' ? scaleOf(scope.scaleId) : null;
     state.session = {
+      mode: mode === 'typing' ? 'typing' : 'choice',
       lang: state.lang,                       // language, script and scope are locked for this session
       script: state.script,
       scope: scope,
@@ -123,6 +177,13 @@
     const value = candidates[Math.floor(Math.random() * candidates.length)];
     const correctText = textOf(L, value, s.script);
 
+    if (s.mode === 'typing') {            // no distractors needed: the answer is typed
+      s.last = value;
+      s.locked = false;
+      s.q = { value: value, expected: correctText, accepted: acceptedAnswers(L, value, s.script) };
+      return;
+    }
+
     // three distractors: different numbers AND different words
     const seen = new Set([correctText]);
     const wrong = [];
@@ -138,6 +199,10 @@
   }
 
   function renderPractice() {
+    if (state.session.mode === 'typing') renderTyping(); else renderChoice();
+  }
+
+  function renderChoice() {
     const s = state.session, L = langOf(s.lang), q = s.q;
     app.innerHTML =
       '<div class="bar"><button class="back" data-action="exit" aria-label="Exit practice">' + BACK_ICON + '</button><span class="muted">' + L.name + ' · ' + s.title + '</span></div>' +
@@ -170,6 +235,73 @@
     }, NEXT_DELAY);
   }
 
+  // ---------- typing practice ----------
+  function renderTyping() {
+    const s = state.session, L = langOf(s.lang);
+    const hint = L.code === 'ja' ? (s.script === 'kanji' ? 'Type in kanji' : 'Type in hiragana') : 'Type the ' + L.name + ' word';
+    app.innerHTML =
+      '<div class="bar"><button class="back" data-action="exit" aria-label="Exit practice">' + BACK_ICON + '</button><span class="muted">' + L.name + ' · ' + s.title + '</span></div>' +
+      '<div class="counters" aria-live="polite"><div class="card counter"><span>True</span><strong id="c-true">' + s.correct + '</strong></div><div class="card counter"><span>False</span><strong id="c-false">' + s.wrong + '</strong></div></div>' +
+      '<h2 class="question" id="t-question"></h2>' +
+      '<div class="typing">' +
+        '<input id="t-input" class="type-input" type="text" ' + attrs(L) + ' placeholder="' + hint + '" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="send" aria-label="Your answer">' +
+        '<div id="t-feedback" class="feedback" role="status" aria-live="polite" hidden></div>' +
+        '<button class="btn primary type-btn" id="t-btn" data-action="typing-main">Submit</button>' +
+      '</div>';
+    showTypingQuestion();
+  }
+
+  // Updates the question in place (no full re-render) so the input and keyboard stay ready
+  function showTypingQuestion() {
+    const s = state.session, L = langOf(s.lang);
+    const input = document.getElementById('t-input');
+    document.getElementById('t-question').textContent = 'What is ' + D.label(s.q.value) + ' in ' + L.name + '?';
+    input.value = '';
+    input.readOnly = false;
+    input.className = 'type-input';
+    const fb = document.getElementById('t-feedback');
+    fb.hidden = true; fb.innerHTML = '';
+    document.getElementById('t-btn').textContent = 'Submit';
+    input.focus();
+  }
+
+  function submitTyping() {
+    const s = state.session;
+    if (!s || s.mode !== 'typing' || s.locked) return;   // one submission per question
+    const input = document.getElementById('t-input');
+    if (!input.value.trim()) { input.focus(); return; }  // empty input is not an answer
+    s.locked = true;
+    s.lockedAt = Date.now();
+    const L = langOf(s.lang), v = s.q.value, w = L.words[v];
+    const ok = isCorrectTyped(input.value, s.q.accepted, s.lang);
+    if (ok) s.correct++; else s.wrong++;
+    document.getElementById('c-true').textContent = s.correct;
+    document.getElementById('c-false').textContent = s.wrong;
+    input.readOnly = true;
+    input.classList.add(ok ? 'correct' : 'wrong');
+    const rd = readingOf(L, v, s.script);
+    const showAlt = w.a && !(L.code === 'ja' && s.script === 'kanji');
+    const fb = document.getElementById('t-feedback');
+    fb.innerHTML =
+      fb.innerHTML =
+  '<div class="feedback-status ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'Bingo!' : 'Close, but nope.') + '</div>' +
+      '<div class="feedback-label">' + (ok ? 'Answer' : 'Correct answer') + '</div>' +
+      '<div class="feedback-word" ' + attrs(L) + '>' + s.q.expected + '</div>' +
+      (rd ? '<div class="feedback-sub">' + rd + '</div>' : '') +
+      (showAlt ? '<div class="feedback-sub" ' + (L.code === 'ar' ? attrs(L) : '') + '>' + w.a + '</div>' : '');
+    fb.hidden = false;
+    const btn = document.getElementById('t-btn');
+    btn.textContent = 'Next question';
+    btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function advanceTyping() {
+    const s = state.session;
+    if (!s || s.mode !== 'typing' || !s.locked) return;
+    nextQuestion();
+    showTypingQuestion();
+  }
+
   function exitPractice() {
     clearTimeout(state.session.timer);
     const wasNumber = state.session.scope.type === 'number';
@@ -184,6 +316,7 @@
     if (state.view === 'home') renderHome();
     else if (state.view === 'list') renderList();
     else if (state.view === 'detail') renderDetail();
+    else if (state.view === 'mode') renderModeSelect();
     else renderPractice();
     window.scrollTo(0, 0);
   }
@@ -206,13 +339,30 @@
       case 'scale': state.scaleId = el.dataset.id; state.view = 'list'; render(); break;
       case 'back-list': state.view = 'list'; render(); break;
       case 'detail': state.value = Number(el.dataset.value); state.view = 'detail'; render(); break;
-      case 'practice-scale': startSession({ type: 'scale', scaleId: state.scaleId }); break;
-      case 'practice-number': startSession({ type: 'number', value: state.value }); break;
+      case 'practice-scale': state.pending = { type: 'scale', scaleId: state.scaleId }; state.view = 'mode'; render(); break;
+      case 'practice-number': state.pending = { type: 'number', value: state.value }; state.view = 'mode'; render(); break;
+      case 'mode-back': state.view = state.pending && state.pending.type === 'number' ? 'detail' : 'list'; render(); break;
+      case 'start-mode': startSession(state.pending, el.dataset.mode); break;
+      case 'typing-main': if (state.session && state.session.locked) advanceTyping(); else submitTyping(); break;
       case 'answer': answer(Number(el.dataset.i)); break;
       case 'about': aboutDialog.showModal(); break;
       case 'close-about': aboutDialog.close(); break;
       case 'exit': exitPractice(); break;
     }
+  });
+
+  // Typing mode: Enter submits, then Enter again continues. Ignored while an IME
+  // (Japanese, etc.) is composing, and on other focused controls so Enter still
+  // activates the exit / back buttons.
+  document.addEventListener('keydown', function (e) {
+    const s = state.session;
+    if (!s || s.mode !== 'typing' || e.key !== 'Enter' || e.isComposing || e.keyCode === 229 || e.repeat) return;
+    if (aboutDialog.open) return;
+    const onInput = e.target && e.target.id === 't-input';
+    if (!onInput && !(s.locked && e.target === document.body)) return;
+    e.preventDefault();
+    if (!s.locked) submitTyping();
+    else if (Date.now() - s.lockedAt > 250) advanceTyping();   // guards against a double-tap on Enter
   });
 
   // Clicking the dark area outside the popup closes it

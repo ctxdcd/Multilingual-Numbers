@@ -12,39 +12,191 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="top">
-    <div class="title-row">
+  
+<header class="top">
+
+  <div class="title-row">
+    <div class="title-copy">
+      <p class="eyebrow">LANGUAGE COLLECTION · 01</p>
       <h1>Numbers</h1>
-      <button class="info-btn" data-action="about" aria-label="About and how to use">?</button>
+      <p class="subtitle">From the basics to the millions.</p>
     </div>
-    <nav id="lang-bar" class="lang-bar" role="radiogroup" aria-label="Language"></nav>
-    <div id="script-bar" class="script-bar"></div>
-  </header>
+
+    
+<button class="info-btn"
+  data-action="about"
+  aria-label="About and how to use">
+
+  <svg
+    viewBox="0 0 24 24"
+    width="21"
+    height="21"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true">
+
+    <path d="M12 7.5C10.5 5.9 7.7 5 3.5 5v13c4.2 0 7 .9 8.5 2.5"/>
+    <path d="M12 7.5C13.5 5.9 16.3 5 20.5 5v13c-4.2 0-7 .9-8.5 2.5"/>
+    <path d="M12 7.5v13"/>
+  </svg>
+
+</button>
+
+  </div>
+
+  <nav id="lang-bar" class="lang-bar"
+    role="radiogroup" aria-label="Language"></nav>
+
+  <div id="script-bar" class="script-bar"></div>
+
+</header>
+
   <main id="app"></main>
 
-  <dialog id="about" class="about" aria-labelledby="about-title">
-    <div class="about-body">
-      <div class="about-head">
-        <h2 id="about-title">About</h2>
-        <button class="about-close" data-action="close-about" aria-label="Close">✕</button>
+  
+<dialog id="about" class="about" aria-labelledby="about-title">
+  <div class="about-body">
+
+    <div class="about-head">
+      <div>
+        <p class="about-eyebrow">A LITTLE GUIDE</p>
+        <h2 id="about-title">About Numbers<span>.</span></h2>
       </div>
-
-      <p>A small personal project for practising numbers in seven languages: Japanese, Russian, German, French, Turkish, Kurdish (Kurmanji) and Arabic.</p>
-
-      <h3>How to use</h3>
-      <ol>
-        <li><strong>Pick a language</strong> with the chips at the top. For Japanese you can also choose Hiragana or Kanji.</li>
-        <li><strong>Choose a scale</strong>, such as 0–10 or Millions+.</li>
-        <li><strong>Tap a number</strong> to see its written form and pronunciation.</li>
-        <li><strong>Start practising</strong> from a single number or a whole scale.</li>
-        <li><strong>Choose the right answer</strong> out of A, B, C and D. The True and False counters keep score.</li>
-        <li><strong>Keep going</strong> as long as you like. Practice never ends by itself. Press the round arrow to leave.</li>
-      </ol>
-
-      <h3>Good to know</h3>
-      <p>The language is locked during practice, so exit first if you want to switch. Big numbers are named differently in each language, for example a German "Milliarde" is a billion.</p>
+      <button class="about-close"
+        data-action="close-about"
+        aria-label="Close">✕</button>
     </div>
-  </dialog>
+
+    <p class="about-intro">
+      A simple way to explore, learn and remember numbers
+      across seven different languages.
+    </p>
+
+    <div class="about-divider"></div>
+
+    <section class="about-section">
+      <p class="section-label">01 — THE COLLECTION</p>
+      <h3>Seven languages.<br>One learning space.</h3>
+      <p>
+        Explore numbers in Japanese, Russian, German, French,
+        Turkish, Kurdish (Kurmanji) and Arabic.
+      </p>
+    </section>
+
+    <div class="about-divider"></div>
+
+    <section class="about-section">
+      <p class="section-label">02 — HOW IT WORKS</p>
+      <h3>Start with the basics.</h3>
+
+      <div class="about-steps">
+        <div class="about-step">
+          <span class="step-number">1</span>
+          <div>
+            <strong>Choose a language</strong>
+            <p>Select one of the seven available languages.
+              Japanese also offers Hiragana and Kanji.</p>
+          </div>
+        </div>
+
+        <div class="about-step">
+          <span class="step-number">2</span>
+          <div>
+            <strong>Pick a category</strong>
+            <p>Start small with 0–10, then gradually explore
+              larger number ranges.</p>
+          </div>
+        </div>
+
+        <div class="about-step">
+          <span class="step-number">3</span>
+          <div>
+            <strong>Explore and recall</strong>
+            <p>Tap a number to see its written form and
+              pronunciation, then test your memory.</p>
+          </div>
+        </div>
+
+        <div class="about-step">
+          <span class="step-number">4</span>
+          <div>
+            <strong>Keep practising</strong>
+            <p>Choose between four answers, or switch to
+              Typing Mode and write the answer yourself. Your True and
+              False counters track your progress.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="about-divider"></div>
+
+    <section class="about-section">
+      <p class="section-label">03 — A SMALL REMINDER</p>
+      <h3>One category a day.</h3>
+      <p>
+        You don't have to memorise everything at once.
+        Take one category, practise until it sticks, and
+        move on when you're ready.
+      </p>
+    </section>
+
+    <div class="about-divider"></div>
+
+    <section class="about-section about-note">
+      <p class="section-label">GOOD TO KNOW</p>
+      <p>
+  Practice is completely self-paced. There are no time
+  limits or question limits. Keep going for as long as
+  you like, and leave whenever you're ready.
+  Use the round arrow to exit. Your selected language
+  stays locked during practice.
+</p>
+      <p>
+        Large numbers may have different naming systems
+        across languages. For example, German
+        <strong>Milliarde</strong> means one billion.
+      </p>
+    </section>
+
+    <div class="about-motto">
+  <p>
+    "Why choose one language when you can challenge
+    yourself with seven? Can't tell if it's torture
+    or if I'm actually enjoying it. Ahaha."
+  </p>
+  <span>— A QUESTIONABLE LEARNING DECISION</span>
+</div>
+
+    <div class="about-footer">
+      <span>NUMBERS · 2026</span>
+      <span>MADE FOR SELF-STUDY</span>
+    </div>
+
+  </div>
+</dialog>
+
+
+
+<footer class="site-footer">
+  <div class="footer-inner">
+
+    <div class="footer-brand">
+      <span class="footer-name">Mlle.Amelia<span class="brand-dot">.</span></span>
+      <p>One Category a Day</p>
+    </div>
+
+    <div class="footer-meta">
+      <span>INDEPENDENT LEARNING PROJECT</span>
+      <span>© 2026 Mlle.Amelia</span>
+    </div>
+
+  </div>
+</footer>
+
 
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
