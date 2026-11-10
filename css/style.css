@@ -741,3 +741,11 @@ html.splash-active #splash {
     visibility: hidden;
   }
 }
+
+html.splash-active body {
+  overflow: hidden;
+}
+
+html.splash-active #splash {
+  background: #000 !important;
+}
