@@ -9,9 +9,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Numbers">
-  <link rel="stylesheet" href="css/style.css">
-  <!-- SPLASH INTRO -->
-<script>
+  <script>
 (function () {
   try {
     var root = document.documentElement;
@@ -25,15 +23,16 @@
       window.navigator.standalone === true;
 
     if (!installed && !forced) return;
-
     if (!forced && sessionStorage.getItem("numbers-splash")) return;
 
     sessionStorage.setItem("numbers-splash", "1");
     root.classList.add("splash-active");
-
   } catch (e) {}
 })();
 </script>
+
+<link rel="stylesheet" href="css/style.css">
+  
 </head>
 <body>
 
