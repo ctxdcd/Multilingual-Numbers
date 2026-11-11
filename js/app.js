@@ -220,6 +220,7 @@
     s.locked = true;
     const chosen = s.q.options[i], ok = chosen.value === s.q.value;
     if (ok) s.correct++; else s.wrong++;
+    showToast(ok, NEXT_DELAY);          // Bingo! / Close, but nope. for the moment before the next question
     document.getElementById('c-true').textContent = s.correct;
     document.getElementById('c-false').textContent = s.wrong;
     document.querySelectorAll('.answer').forEach(function (btn, idx) {
@@ -283,9 +284,9 @@
     }, TYPING_FEEDBACK_MS);
   }
 
-  // Floating "Bingo!" / "Close, but nope." message. It fades itself out via CSS in the same
-  // TYPING_FEEDBACK_MS that the next question waits for.
-  function showToast(ok) {
+  // Floating "Bingo!" / "Close, but nope." message (typing and multiple choice). It fades itself
+  // out via CSS in `ms`: the same time the next question waits for.
+  function showToast(ok, ms) {
     let t = document.getElementById('t-toast');
     if (!t) {
       t = document.createElement('div');
@@ -296,7 +297,7 @@
     }
     t.className = 'toast';
     t.textContent = ok ? 'Bingo!' : 'Close, but nope.';
-    t.style.animationDuration = TYPING_FEEDBACK_MS + 'ms';
+    t.style.animationDuration = (ms || TYPING_FEEDBACK_MS) + 'ms';
     void t.offsetWidth;                                   // restart the animation
     t.className = 'toast ' + (ok ? 'ok' : 'bad') + ' show';
   }
