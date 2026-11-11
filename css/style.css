@@ -674,3 +674,34 @@ main {
   }
 }
 
+
+
+/* =================================
+   TYPING FEEDBACK — AUTO-DISMISS
+   (duration is set from TYPING_FEEDBACK_MS in app.js)
+================================= */
+
+.feedback{animation:feedback-life 3s ease forwards}
+@keyframes feedback-life{
+  0%{opacity:0;transform:translateY(6px)}
+  7%{opacity:1;transform:none}
+  92%{opacity:1;transform:none}
+  100%{opacity:0}
+}
+
+/* =================================
+   OPENING SPLASH — black fade
+   Pure CSS: no JS dependency, never blocks clicks
+================================= */
+
+.splash{
+  position:fixed;top:0;right:0;bottom:0;left:0;
+  z-index:9999;
+  background:#000;
+  pointer-events:none;
+  animation:splash-out .8s ease .35s forwards;
+}
+@keyframes splash-out{
+  from{opacity:1;visibility:visible}
+  to{opacity:0;visibility:hidden}
+}

@@ -7,6 +7,7 @@
   const STORE = 'numbers-lang';
   const STORE_SCRIPT = 'numbers-script';
   const NEXT_DELAY = 1200; // ms before the next question
+  const TYPING_FEEDBACK_MS = 3000; // typing mode: how long Bingo! / Close, but nope. stays before the next question
 
   // ---------- state ----------
   const state = { lang: 'ja', script: 'kana', view: 'home', scaleId: null, value: null, session: null, pending: null };
@@ -262,7 +263,7 @@
     const fb = document.getElementById('t-feedback');
     fb.hidden = true; fb.innerHTML = '';
     document.getElementById('t-btn').textContent = 'Submit';
-    input.focus();
+    if (!s.kbOff) input.focus();   // keep the keyboard up unless the user dismissed it on purpose
   }
 
   function submitTyping() {
@@ -277,7 +278,7 @@
     if (ok) s.correct++; else s.wrong++;
     document.getElementById('c-true').textContent = s.correct;
     document.getElementById('c-false').textContent = s.wrong;
-    input.readOnly = true;
+    s.lockedValue = input.value;   // frozen via input guards below (readOnly would close the mobile keyboard)
     input.classList.add(ok ? 'correct' : 'wrong');
     const rd = readingOf(L, v, s.script);
     const showAlt = w.a && !(L.code === 'ja' && s.script === 'kanji');
@@ -290,9 +291,14 @@
       (rd ? '<div class="feedback-sub">' + rd + '</div>' : '') +
       (showAlt ? '<div class="feedback-sub" ' + (L.code === 'ar' ? attrs(L) : '') + '>' + w.a + '</div>' : '');
     fb.hidden = false;
+    fb.style.animationDuration = TYPING_FEEDBACK_MS + 'ms';
     const btn = document.getElementById('t-btn');
-    btn.textContent = 'Next question';
     btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (document.activeElement !== input && !s.kbOff) input.focus();
+    s.timer = setTimeout(function () {
+      if (state.session !== s) return;   // session was exited meanwhile
+      advanceTyping();
+    }, TYPING_FEEDBACK_MS);
   }
 
   function advanceTyping() {
@@ -343,7 +349,7 @@
       case 'practice-number': state.pending = { type: 'number', value: state.value }; state.view = 'mode'; render(); break;
       case 'mode-back': state.view = state.pending && state.pending.type === 'number' ? 'detail' : 'list'; render(); break;
       case 'start-mode': startSession(state.pending, el.dataset.mode); break;
-      case 'typing-main': if (state.session && state.session.locked) advanceTyping(); else submitTyping(); break;
+      case 'typing-main': submitTyping(); break;
       case 'answer': answer(Number(el.dataset.i)); break;
       case 'about': aboutDialog.showModal(); break;
       case 'close-about': aboutDialog.close(); break;
@@ -351,7 +357,7 @@
     }
   });
 
-  // Typing mode: Enter submits, then Enter again continues. Ignored while an IME
+  // Typing mode: Enter submits (the next question follows automatically). Ignored while an IME
   // (Japanese, etc.) is composing, and on other focused controls so Enter still
   // activates the exit / back buttons.
   document.addEventListener('keydown', function (e) {
@@ -362,8 +368,27 @@
     if (!onInput && !(s.locked && e.target === document.body)) return;
     e.preventDefault();
     if (!s.locked) submitTyping();
-    else if (Date.now() - s.lockedAt > 250) advanceTyping();   // guards against a double-tap on Enter
   });
+
+  // Typing mode keyboard handling. Pressing anything inside the typing area (Submit, feedback)
+  // must not take focus from the input; only tapping an empty area dismisses the keyboard.
+  function typingActive() { const s = state.session; return !!s && s.mode === 'typing' && !aboutDialog.open; }
+  document.addEventListener('mousedown', function (e) {
+    if (typingActive() && e.target.closest('.typing') && e.target.id !== 't-input') e.preventDefault();
+  });
+  document.addEventListener('click', function (e) {
+    if (!typingActive() || e.target.closest('.typing, button, a, dialog, [data-action]')) return;
+    state.session.kbOff = true;                         // deliberate dismissal: don't pop it back up
+    const input = document.getElementById('t-input');
+    if (input) input.blur();
+  });
+  document.addEventListener('focusin', function (e) {
+    if (state.session && e.target && e.target.id === 't-input') state.session.kbOff = false;
+  });
+  // While Bingo! / Close, but nope. is showing, the submitted answer stays as it was
+  function typingFrozen(e) { const s = state.session; return !!s && s.mode === 'typing' && s.locked && e.target && e.target.id === 't-input'; }
+  document.addEventListener('beforeinput', function (e) { if (typingFrozen(e) && e.cancelable) e.preventDefault(); });
+  document.addEventListener('input', function (e) { if (typingFrozen(e)) e.target.value = state.session.lockedValue; });
 
   // Clicking the dark area outside the popup closes it
   aboutDialog.addEventListener('click', function (e) {
