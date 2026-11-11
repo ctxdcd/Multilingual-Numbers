@@ -7,7 +7,7 @@
   const STORE = 'numbers-lang';
   const STORE_SCRIPT = 'numbers-script';
   const NEXT_DELAY = 1200; // ms before the next question
-  const TYPING_FEEDBACK_MS = 3000; // typing mode: how long Bingo! / Close, but nope. stays before the next question
+  const TYPING_FEEDBACK_MS = 2000; // typing mode: how long Bingo! / Close, but nope. stays before the next question
 
   // ---------- state ----------
   const state = { lang: 'ja', script: 'kana', view: 'home', scaleId: null, value: null, session: null, pending: null };
@@ -244,11 +244,9 @@
       '<div class="bar"><button class="back" data-action="exit" aria-label="Exit practice">' + BACK_ICON + '</button><span class="muted">' + L.name + ' · ' + s.title + '</span></div>' +
       '<div class="counters" aria-live="polite"><div class="card counter"><span>True</span><strong id="c-true">' + s.correct + '</strong></div><div class="card counter"><span>False</span><strong id="c-false">' + s.wrong + '</strong></div></div>' +
       '<h2 class="question" id="t-question"></h2>' +
-      '<div class="typing">' +
+      '<form class="typing" id="t-form" action="javascript:void(0)" novalidate>' +
         '<input id="t-input" class="type-input" type="text" ' + attrs(L) + ' placeholder="' + hint + '" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="send" aria-label="Your answer">' +
-        '<div id="t-feedback" class="feedback" role="status" aria-live="polite" hidden></div>' +
-        '<button class="btn primary type-btn" id="t-btn" data-action="typing-main">Submit</button>' +
-      '</div>';
+      '</form>';
     showTypingQuestion();
   }
 
@@ -260,9 +258,6 @@
     input.value = '';
     input.readOnly = false;
     input.className = 'type-input';
-    const fb = document.getElementById('t-feedback');
-    fb.hidden = true; fb.innerHTML = '';
-    document.getElementById('t-btn').textContent = 'Submit';
     if (!s.kbOff) input.focus();   // keep the keyboard up unless the user dismissed it on purpose
   }
 
@@ -280,25 +275,34 @@
     document.getElementById('c-false').textContent = s.wrong;
     s.lockedValue = input.value;   // frozen via input guards below (readOnly would close the mobile keyboard)
     input.classList.add(ok ? 'correct' : 'wrong');
-    const rd = readingOf(L, v, s.script);
-    const showAlt = w.a && !(L.code === 'ja' && s.script === 'kanji');
-    const fb = document.getElementById('t-feedback');
-    fb.innerHTML =
-      fb.innerHTML =
-  '<div class="feedback-status ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'Bingo!' : 'Close, but nope.') + '</div>' +
-      '<div class="feedback-label">' + (ok ? 'Answer' : 'Correct answer') + '</div>' +
-      '<div class="feedback-word" ' + attrs(L) + '>' + s.q.expected + '</div>' +
-      (rd ? '<div class="feedback-sub">' + rd + '</div>' : '') +
-      (showAlt ? '<div class="feedback-sub" ' + (L.code === 'ar' ? attrs(L) : '') + '>' + w.a + '</div>' : '');
-    fb.hidden = false;
-    fb.style.animationDuration = TYPING_FEEDBACK_MS + 'ms';
-    const btn = document.getElementById('t-btn');
-    btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    if (document.activeElement !== input && !s.kbOff) input.focus();
+    showToast(ok);
+    if (document.activeElement !== input && !s.kbOff) input.focus();   // keep the keyboard up
     s.timer = setTimeout(function () {
       if (state.session !== s) return;   // session was exited meanwhile
       advanceTyping();
     }, TYPING_FEEDBACK_MS);
+  }
+
+  // Floating "Bingo!" / "Close, but nope." message. It fades itself out via CSS in the same
+  // TYPING_FEEDBACK_MS that the next question waits for.
+  function showToast(ok) {
+    let t = document.getElementById('t-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 't-toast';
+      t.setAttribute('role', 'status');
+      t.setAttribute('aria-live', 'polite');
+      document.body.appendChild(t);
+    }
+    t.className = 'toast';
+    t.textContent = ok ? 'Bingo!' : 'Close, but nope.';
+    t.style.animationDuration = TYPING_FEEDBACK_MS + 'ms';
+    void t.offsetWidth;                                   // restart the animation
+    t.className = 'toast ' + (ok ? 'ok' : 'bad') + ' show';
+  }
+  function hideToast() {
+    const t = document.getElementById('t-toast');
+    if (t) t.className = 'toast';
   }
 
   function advanceTyping() {
@@ -310,6 +314,7 @@
 
   function exitPractice() {
     clearTimeout(state.session.timer);
+    hideToast();
     const wasNumber = state.session.scope.type === 'number';
     state.session = null;
     state.view = wasNumber ? 'detail' : 'list';
@@ -349,7 +354,6 @@
       case 'practice-number': state.pending = { type: 'number', value: state.value }; state.view = 'mode'; render(); break;
       case 'mode-back': state.view = state.pending && state.pending.type === 'number' ? 'detail' : 'list'; render(); break;
       case 'start-mode': startSession(state.pending, el.dataset.mode); break;
-      case 'typing-main': submitTyping(); break;
       case 'answer': answer(Number(el.dataset.i)); break;
       case 'about': aboutDialog.showModal(); break;
       case 'close-about': aboutDialog.close(); break;
@@ -370,7 +374,7 @@
     if (!s.locked) submitTyping();
   });
 
-  // Typing mode keyboard handling. Pressing anything inside the typing area (Submit, feedback)
+  // Typing mode keyboard handling. Pressing anything inside the typing area
   // must not take focus from the input; only tapping an empty area dismisses the keyboard.
   function typingActive() { const s = state.session; return !!s && s.mode === 'typing' && !aboutDialog.open; }
   document.addEventListener('mousedown', function (e) {
@@ -381,6 +385,10 @@
     state.session.kbOff = true;                         // deliberate dismissal: don't pop it back up
     const input = document.getElementById('t-input');
     if (input) input.blur();
+  });
+  // Enter on a computer, or the Go / Send key on a phone, submits the answer
+  document.addEventListener('submit', function (e) {
+    if (e.target && e.target.id === 't-form') { e.preventDefault(); submitTyping(); }
   });
   document.addEventListener('focusin', function (e) {
     if (state.session && e.target && e.target.id === 't-input') state.session.kbOff = false;
